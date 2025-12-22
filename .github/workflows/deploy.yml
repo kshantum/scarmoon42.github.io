@@ -8,14 +8,13 @@ on:
 
 permissions:
   contents: write
-  pages: write
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -25,18 +24,23 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm install --legacy-peer-deps
+        run: npm ci --legacy-peer-deps
 
       - name: Build
         working-directory: frontend
         run: npm run build
 
-      - name: Check dist directory
-        run: ls -la frontend/dist/ || echo "dist directory not found!"
+      - name: List dist contents
+        run: |
+          echo "=== Checking dist folder ==="
+          ls -lah frontend/dist/
+          echo "=== Total files ==="
+          find frontend/dist -type f | wc -l
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy with gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./frontend/dist
+          cname: 
           force_orphan: true
