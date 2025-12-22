@@ -15,7 +15,7 @@ export default defineConfig({
     target: 'esnext',
     outDir: 'dist',
     sourcemap: true,
-    minify: 'terser',
+    minify: 'esbuild',
   },
   server: {
     port: 3000,
