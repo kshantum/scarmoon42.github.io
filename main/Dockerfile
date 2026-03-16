@@ -31,8 +31,7 @@ WORKDIR /app
 RUN apk add --no-cache openssl
 
 COPY package*.json ./
-COPY prisma/schema.prisma ./prisma/schema.prisma
-RUN npm install --legacy-peer-deps && npm cache clean --force
+RUN npm install --legacy-peer-deps --ignore-scripts && npm cache clean --force
 
 # Copy built assets from frontend builder
 COPY --from=frontend-builder /app/dist ./dist
@@ -41,6 +40,7 @@ COPY --from=frontend-builder /app/dist ./dist
 COPY --from=backend-builder /app/server ./server
 COPY --from=backend-builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=backend-builder /app/prisma ./prisma
+COPY --from=backend-builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 # Copy uploads directory
 RUN mkdir -p uploads
