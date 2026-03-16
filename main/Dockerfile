@@ -38,7 +38,6 @@ COPY --from=frontend-builder /app/dist ./dist
 
 # Copy server files and generated Prisma client
 COPY --from=backend-builder /app/server ./server
-COPY --from=backend-builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=backend-builder /app/prisma ./prisma
 COPY --from=backend-builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
