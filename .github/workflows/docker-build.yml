@@ -44,10 +44,11 @@ jobs:
           type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
 
     - name: Build and push Docker image
+      id: build
       uses: docker/build-push-action@v5
       with:
-        context: .
-        file: ./Dockerfile
+        context: ./main
+        file: ./main/Dockerfile
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
@@ -70,4 +71,4 @@ jobs:
 
     - name: Validate docker-compose.yml
       run: |
-        docker compose -f docker-compose.yml config --quiet && echo "docker-compose.yml is valid"
+        docker compose -f main/docker-compose.yml config --quiet && echo "docker-compose.yml is valid"
