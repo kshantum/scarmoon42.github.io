@@ -15,6 +15,7 @@ FROM node:20-alpine AS backend-builder
 WORKDIR /app
 
 COPY package*.json ./
+COPY prisma/schema.prisma ./prisma/schema.prisma
 RUN npm install --legacy-peer-deps
 
 COPY . .
@@ -29,6 +30,7 @@ WORKDIR /app
 RUN apk add --no-cache openssl
 
 COPY package*.json ./
+COPY prisma/schema.prisma ./prisma/schema.prisma
 RUN npm install --legacy-peer-deps && npm cache clean --force
 
 # Copy built assets from frontend builder
