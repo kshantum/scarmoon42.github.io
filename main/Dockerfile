@@ -4,7 +4,8 @@ FROM node:20-alpine AS frontend-builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+# Игнорируем скрипты при установке, чтобы не запустился prisma generate
+RUN npm install --legacy-peer-deps --ignore-scripts
 
 COPY . .
 RUN npm run build
