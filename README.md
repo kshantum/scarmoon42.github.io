@@ -37,3 +37,23 @@ cd main
 
 ## Развертывание (Deployment)
 Проект настроен на автоматический деплой на GitHub Pages через GitHub Actions. При пуше в ветку `main` запускается файл `.github/workflows/deploy.yml`, который собирает проект и выкладывает папку `dist`. Бэкенд должен крутиться на отдельном сервере, а его адрес должен быть указан в файле `main/.env.production` (параметр `VITE_API_URL`).
+
+
+## Docker Compose (запуск приложения и зависимостей)
+В корне репозитория добавлен `docker-compose.yml`, который поднимает:
+- `app` (само приложение из `main/Dockerfile`),
+- `db` (PostgreSQL для приложения),
+- `redis`,
+- `keycloak` + `keycloak-db`.
+
+Быстрый запуск:
+```bash
+docker compose up -d --build
+```
+
+Остановка:
+```bash
+docker compose down
+```
+
+Переменные окружения вынесены в корневые файлы `.env` и `.env.example`.

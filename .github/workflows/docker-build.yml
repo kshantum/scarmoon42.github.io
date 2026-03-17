@@ -71,4 +71,4 @@ jobs:
 
     - name: Validate docker-compose.yml
       run: |
-        docker compose -f main/docker-compose.yml config --quiet && echo "docker-compose.yml is valid"
+        docker compose -f docker-compose.yml config --quiet && echo "docker-compose.yml is valid"
