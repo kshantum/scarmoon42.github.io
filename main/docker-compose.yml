@@ -1,21 +1,25 @@
 services:
+  # Основная база данных приложения
   db:
     image: postgres:17
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: myapp
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-myapp}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
+  # Redis для кэширования
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -28,70 +32,40 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - app-network
 
-  prometheus:
-    image: prom/prometheus:latest
-    restart: unless-stopped
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.enable-lifecycle"
-
-  grafana:
-    image: grafana/grafana:latest
-    restart: unless-stopped
-    ports:
-      - "3002:3000"
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_USERS_ALLOW_SIGN_UP: "false"
-    volumes:
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - prometheus
-
-  loki:
-    image: grafana/loki:latest
-    restart: unless-stopped
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./infra/loki-config.yml:/etc/loki/local-config.yaml
-      - loki_data:/loki
-    command: -config.file=/etc/loki/local-config.yaml
-
+  # База данных для Keycloak
   keycloak-db:
     image: postgres:17
     restart: unless-stopped
     environment:
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak-password
-      POSTGRES_DB: keycloak
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak-password}
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
     ports:
       - "5433:5432"
     volumes:
       - keycloak_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER:-keycloak}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
+  # Keycloak для аутентификации
   keycloak:
     image: keycloak/keycloak:24.0.0
     restart: unless-stopped
     environment:
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak-password
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak-password}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_PROXY: edge
       KC_HOSTNAME_STRICT: "false"
     ports:
@@ -104,13 +78,59 @@ services:
     depends_on:
       keycloak-db:
         condition: service_healthy
+    networks:
+      - app-network
+
+  # Основное приложение (backend + frontend)
+  app:
+    image: ${APP_IMAGE:-ghcr.io/scarmoon42/sitedraft:latest}
+    # Если нужно собрать локально, раскомментируйте build и закомментируйте image:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    container_name: sitedraft-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-30543}:3001"
+    environment:
+      # База данных
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-myapp}?schema=public
+      # Redis
+      - REDIS_URL=redis://redis:6379
+      # Keycloak
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-app}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID:-frontend}
+      # Приложение
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3001
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
   redis_data:
-  prometheus_data:
-  grafana_data:
-  loki_data:
   keycloak_db_data:
+  uploads_data:
+
+networks:
+  app-network:
+    driver: bridge
 
   

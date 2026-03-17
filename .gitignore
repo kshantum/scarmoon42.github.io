@@ -1,5 +1,9 @@
 ```
-# Docker related
-Dockerfile
+# Environment variables
+.env
+.env.local
+.env.*
 
+# Docker
+.dockerenv
 ```
