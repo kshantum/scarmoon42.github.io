@@ -44,6 +44,15 @@ function getIssuer(): string {
   return `${keycloakUrl.replace(/\/+$/, '')}/realms/${realm}`;
 }
 
+function getValidIssuers(): string[] {
+  const realm = process.env.KEYCLOAK_REALM || 'app';
+  return [
+    getIssuer(),
+    `http://localhost:8080/realms/${realm}`,
+    `https://localhost:8080/realms/${realm}`
+  ];
+}
+
 function mapRole(roles: string[]): AppRole {
   if (roles.includes('secretary')) return 'Секретарь';
   if (roles.includes('external_expert')) return 'Внешний эксперт';
@@ -59,11 +68,10 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const token = auth?.replace(/^Bearer\s+/i, '');
     if (!token) return res.status(401).json({ success: false, message: 'Требуется авторизация' });
 
-    const issuer = getIssuer();
     // Keycloak по умолчанию выставляет aud: ['account'], а не clientId.
     // Проверяем только issuer здесь; clientId валидируем через azp ниже.
     const { payload } = await jwtVerify(token, jwks, {
-      issuer,
+      issuer: getValidIssuers(),
     });
 
     // Ручная проверка azp (authorized party) — содержит clientId в Keycloak токенах

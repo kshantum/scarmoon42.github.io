@@ -105,6 +105,25 @@ services:
       keycloak-db:
         condition: service_healthy
 
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+      - "3000:3001" # Редирект старого фронта на новый порт монолита
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/myapp?schema=public
+      - REDIS_URL=redis://redis:6379
+      - PORT=3001
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=app
+      - KEYCLOAK_CLIENT_ID=frontend
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   redis_data:

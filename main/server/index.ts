@@ -42,6 +42,14 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Статический сервис для загруженных файлов
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+// Эмуляция поведения Vite Proxy для продакшена (монолита)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    req.url = req.url.replace('/api', '');
+  }
+  next();
+});
+
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/candidates', candidatesRoutes);
@@ -49,6 +57,19 @@ app.use('/files', filesRoutes);
 app.use('/open-classes', openClassesRoutes);
 app.use('/metadata', metadataRoutes);
 app.use('/assignments', assignmentRoutes);
+
+// Раздача статики React (SPA)
+const distPath = path.join(process.cwd(), 'dist');
+app.use(express.static(distPath));
+
+// Для клиентского роутинга React: если путь не API и хочет HTML, отдаем index.html
+app.get('*', (req, res, next) => {
+  if (req.accepts('html')) {
+    res.sendFile(path.join(distPath, 'index.html'));
+  } else {
+    next();
+  }
+});
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'api' });
