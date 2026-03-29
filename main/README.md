@@ -48,13 +48,6 @@ docker-compose up -d --build
 
 Ожидайте ~30-60 секунд для инициализации баз данных.
 
-### 2. Настройка базы данных (Внутри контейнера)
-При первом запуске нужно прогнать миграции:
-```bash
-docker-compose exec app npm run db:push
-docker-compose exec app npm run db:seed
-```
-
 ---
 
 ## 🔐 Аутентификация и Keycloak

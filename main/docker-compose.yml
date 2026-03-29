@@ -46,7 +46,7 @@ services:
     image: grafana/grafana:latest
     restart: unless-stopped
     ports:
-      - "3002:3000"  # Оставляем для веб-доступа к дашбордам
+      - "3002:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
@@ -97,7 +97,7 @@ services:
       KC_PROXY: edge
       KC_HOSTNAME_STRICT: "false"
     ports:
-      - "8080:8080"  # Оставляем для OAuth редиректов с браузера
+      - "8080:8080"
     volumes:
       - ./infra/keycloak:/opt/keycloak/data/import
     command:
@@ -109,11 +109,25 @@ services:
     networks:
       - internal
 
+  # Сервис миграций - запускается один раз и завершается
+  migrations:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/myapp?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+    #command: sh -c "npm run db:push && npm run db:seed" - в seed.ts только вывод в консоль
+    command: sh -c "npm run db:push" #всегда при запуске сверять структуру
+    restart: "no"
+    networks:
+      - internal
+
   app:
     build: .
     restart: unless-stopped
     ports:
-      - "3000:3001"  # Основной порт приложения
+      - "3000:3001"
     environment:
       - DATABASE_URL=postgresql://postgres:password@db:5432/myapp?schema=public
       - REDIS_URL=redis://redis:6379
@@ -121,13 +135,14 @@ services:
       - KEYCLOAK_URL=http://keycloak:8080
       - KEYCLOAK_REALM=app
       - KEYCLOAK_CLIENT_ID=frontend
-      - LOKI_URL=http://loki:3100      # Добавлено для логирования
-      - PROMETHEUS_URL=http://prometheus:9090  # Если нужны метрики
+      - LOKI_URL=http://loki:3100
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrations:
+        condition: service_completed_successfully  # Ждёт завершения миграций
     networks:
       - internal
 
